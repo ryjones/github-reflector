@@ -1,0 +1,35 @@
+# Local development. No Caddy and no TLS: the service is published on
+# 127.0.0.1:8080 so it can be driven with curl and a hand-computed signature.
+# See "Try it locally" in README.md.
+services:
+  reflector:
+    build: .
+    image: github-reflector:dev
+    # Must be able to write ./logs and ./queue: on Linux set it to
+    # `id -u`:`id -g`. Docker Desktop and colima map ownership themselves.
+    user: "1000:1000"
+    environment:
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:?set it in .env}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:?set it in .env}
+      LISTEN_ADDR: ":8080"
+      LOG_DIR: /var/log/reflector
+      IGNORE_JOB_NAMES: "${IGNORE_JOB_NAMES:-}"
+      IGNORE_CHECK_APPS: "${IGNORE_CHECK_APPS:-}"
+      DISCORD_ENABLED: "${DISCORD_ENABLED:-1}"
+      IGNORE_WORKFLOWS: "${IGNORE_WORKFLOWS:-}"
+      ONLY_WORKFLOWS: "${ONLY_WORKFLOWS:-}"
+      FORWARD_SUCCESS: "${FORWARD_SUCCESS:-0}"
+      FORWARD_CHECK_SUITE: "${FORWARD_CHECK_SUITE:-0}"
+      IGNORE_CONCLUSIONS: "${IGNORE_CONCLUSIONS:-}"
+      LOG_RETENTION_DAYS: "${LOG_RETENTION_DAYS:-30}"
+      QUEUE_DIR: /var/queue
+      RETRY_WINDOW_HOURS: "${RETRY_WINDOW_HOURS:-24}"
+      DELIVERED_RETENTION_HOURS: "${DELIVERED_RETENTION_HOURS:-6}"
+      QUEUE_RETENTION_DAYS: "${QUEUE_RETENTION_DAYS:-7}"
+      LOG_SKIPPED: "${LOG_SKIPPED:-1}"
+      SKIPPED_RETENTION_MINUTES: "${SKIPPED_RETENTION_MINUTES:-60}"
+    volumes:
+      - ./logs:/var/log/reflector
+      - ./queue:/var/queue
+    ports:
+      - "127.0.0.1:8080:8080"

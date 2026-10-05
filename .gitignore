@@ -1,0 +1,12 @@
+.env
+/github-reflector
+
+# The bind-mount sources must EXIST in a fresh checkout. If they do not, Docker
+# creates them as root and the container, which runs as uid 1000, cannot write:
+# it crash-loops on "mkdir /var/log/reflector/github: permission denied".
+# Tracking a .gitkeep in each means a clone creates them owned by whoever
+# cloned, and Docker never has to.
+logs/*
+!logs/.gitkeep
+queue/*
+!queue/.gitkeep

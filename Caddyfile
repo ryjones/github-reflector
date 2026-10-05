@@ -1,0 +1,12 @@
+# TLS for the webhook endpoint. Caddy obtains the certificate from Let's
+# Encrypt by HTTP-01 over port 80, so no DNS credential is needed on the host.
+# WEBHOOK_DOMAIN comes from .env by way of compose.yaml.
+{$WEBHOOK_DOMAIN} {
+	handle /webhook {
+		reverse_proxy reflector:8080
+	}
+	# Everything else is not part of the contract with GitHub.
+	handle {
+		respond "not found" 404
+	}
+}
