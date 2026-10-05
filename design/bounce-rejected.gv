@@ -1,0 +1,41 @@
+// Bounce diagram: a delivery whose signature does not verify.
+// See bounce-forwarded.gv for how the grid layout works.
+//
+// Render:  dot -Tsvg bounce-rejected.gv -o bounce-rejected.svg
+digraph rejected {
+  graph [bgcolor=white, fontname="Helvetica", nodesep=0.3, ranksep=0.44, splines=line];
+  node  [fontname="Helvetica", fontsize=10, shape=point, width=0, height=0, style=invis];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  // participants
+  { rank=same;
+    node [shape=box, style=filled, fillcolor="#eaeef2", height=0.45];
+    gh [label="anyone"];
+    cd [label="Caddy\n(TLS)"];
+    hd [label="reflector\nHTTP handler"];
+    dk [label="disk\nlogs/  queue/"];
+    gh -> cd -> hd -> dk [style=invis];
+  }
+
+  // what a participant does by itself
+  { node [shape=box, style=filled, fillcolor="#ffebe9", fontsize=9, margin="0.12,0.09"];
+    hd3 [label="HMAC-SHA256 of the body\ndoes not match the header\nbody is never parsed"];
+  }
+
+  // lifelines
+  { edge [arrowhead=none, color="gray55", style=dashed, weight=100];
+    gh -> gh1 -> gh2 -> gh3 -> gh4 -> gh5 -> gh_end;
+    cd -> cd1 -> cd2 -> cd3 -> cd4 -> cd5 -> cd_end;
+    hd -> hd1 -> hd2 -> hd3 -> hd4 -> hd5 -> hd_end;
+    dk -> dk1 -> dk2 -> dk3 -> dk4 -> dk5 -> dk_end;
+  }
+
+  { rank=same; gh1 -> cd1 [label="1  POST /webhook\nbad or missing signature"]; }
+  { rank=same; cd2 -> hd2 [label="2  POST /webhook\nplain HTTP"]; }
+  { rank=same; gh3; cd3; hd3; dk3; }
+  { rank=same; hd4 -> dk4 [label="3  log to logs/github\noutcome = bad_signature"]; }
+  { rank=same;
+    gh5 -> cd5 [label="4  401", dir=back, color="#cf222e", fontcolor="#cf222e"];
+    cd5 -> hd5 [label="4  401", dir=back, color="#cf222e", fontcolor="#cf222e"];
+  }
+}

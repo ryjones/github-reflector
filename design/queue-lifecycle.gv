@@ -1,0 +1,30 @@
+// The states of a queue item. Each state is a directory under queue/, and a
+// change of state is a rename within one filesystem. The times are the
+// default retention settings.
+//
+// Render:  dot -Tsvg queue-lifecycle.gv -o queue-lifecycle.svg
+digraph lifecycle {
+  graph [bgcolor=white, fontname="Helvetica", nodesep=0.9, ranksep=0.55];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled", fillcolor="#eaeef2", margin="0.14,0.08"];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  arrive    [label="signed delivery", shape=plaintext, style=""];
+  waiting   [label="queue/waiting", fillcolor="#fff8c5"];
+  delivered [label="queue/delivered", fillcolor="#dafbe1"];
+  failed    [label="queue/failed", fillcolor="#ffebe9"];
+  skipped   [label="queue/skipped"];
+  gone      [label="deleted", shape=plaintext, style=""];
+
+  arrive  -> waiting   [label="  policy forwards it"];
+  arrive  -> skipped   [label="  policy declines it"];
+  waiting -> waiting   [label="  post fails:\n  back off, try again"];
+  waiting -> delivered [label="  Discord answers 2xx"];
+  waiting -> failed    [label="  post fails and the item\n  is older than 24 hours"];
+
+  { rank=same; delivered; failed; }
+
+  edge [style=dashed, color="gray40", fontcolor="gray30"];
+  delivered -> gone [label="  after 6 hours"];
+  failed    -> gone [label="  after 7 days"];
+  skipped   -> gone [label="  after 60 minutes"];
+}

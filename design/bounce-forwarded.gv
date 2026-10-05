@@ -1,0 +1,67 @@
+// Bounce diagram: a delivery that is forwarded to Discord.
+//
+// The layout is a grid. Each participant is a column of invisible nodes
+// joined by a dashed lifeline; each step is a row, held level by rank=same.
+// A message is an edge between two nodes in one row. dot lays same-rank edges
+// out left to right, so every message is written left -> right and one that
+// travels right to left is drawn with dir=back. A message that crosses a
+// column is written as segments through that column's node, which keeps it
+// straight.
+//
+// Render:  dot -Tsvg bounce-forwarded.gv -o bounce-forwarded.svg
+digraph forwarded {
+  graph [bgcolor=white, fontname="Helvetica", nodesep=0.3, ranksep=0.44, splines=line];
+  node  [fontname="Helvetica", fontsize=10, shape=point, width=0, height=0, style=invis];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  // participants
+  { rank=same;
+    node [shape=box, style=filled, fillcolor="#eaeef2", height=0.45];
+    gh [label="GitHub"];
+    cd [label="Caddy\n(TLS)"];
+    hd [label="reflector\nHTTP handler"];
+    dk [label="disk\nlogs/  queue/"];
+    wk [label="reflector\nqueue worker"];
+    dc [label="Discord\nwebhook"];
+    gh -> cd -> hd -> dk -> wk -> dc [style=invis];
+  }
+
+  // what a participant does by itself
+  { node [shape=box, style=filled, fillcolor="#fff8c5", fontsize=9, margin="0.12,0.09"];
+    hd3 [label="verify HMAC-SHA256\nparse JSON\napply policy\nrender the embed"];
+  }
+
+  // lifelines
+  { edge [arrowhead=none, color="gray55", style=dashed, weight=100];
+    gh -> gh1 -> gh2 -> gh3 -> gh4 -> gh5 -> gh6 -> gh7 -> gh8 -> gh9 -> gh10 -> gh11 -> gh12 -> gh_end;
+    cd -> cd1 -> cd2 -> cd3 -> cd4 -> cd5 -> cd6 -> cd7 -> cd8 -> cd9 -> cd10 -> cd11 -> cd12 -> cd_end;
+    hd -> hd1 -> hd2 -> hd3 -> hd4 -> hd5 -> hd6 -> hd7 -> hd8 -> hd9 -> hd10 -> hd11 -> hd12 -> hd_end;
+    dk -> dk1 -> dk2 -> dk3 -> dk4 -> dk5 -> dk6 -> dk7 -> dk8 -> dk9 -> dk10 -> dk11 -> dk12 -> dk_end;
+    wk -> wk1 -> wk2 -> wk3 -> wk4 -> wk5 -> wk6 -> wk7 -> wk8 -> wk9 -> wk10 -> wk11 -> wk12 -> wk_end;
+    dc -> dc1 -> dc2 -> dc3 -> dc4 -> dc5 -> dc6 -> dc7 -> dc8 -> dc9 -> dc10 -> dc11 -> dc12 -> dc_end;
+  }
+
+  // the delivery arrives
+  { rank=same; gh1 -> cd1 [label="1  POST /webhook\nsigned, over HTTPS"]; }
+  { rank=same; cd2 -> hd2 [label="2  POST /webhook\nplain HTTP"]; }
+  { rank=same; gh3; cd3; hd3; dk3; wk3; dc3; }
+
+  // it is made durable, then GitHub is answered
+  { rank=same; hd4 -> dk4 [label="3  write item to\nqueue/waiting"]; }
+  { rank=same;
+    hd5 -> dk5 [arrowhead=none, style=dotted];
+    dk5 -> wk5 [label="4  wake", style=dotted];
+  }
+  { rank=same; hd6 -> dk6 [label="5  log to logs/github\noutcome = queued"]; }
+  { rank=same;
+    gh7 -> cd7 [label="6  200", dir=back];
+    cd7 -> hd7 [label="6  200", dir=back];
+  }
+
+  // the worker delivers it
+  { rank=same; dk8 -> wk8 [label="7  read due items", dir=back]; }
+  { rank=same; wk9 -> dc9 [label="8  POST embed JSON"]; }
+  { rank=same; wk10 -> dc10 [label="9  204", dir=back]; }
+  { rank=same; dk11 -> wk11 [label="10  log to logs/discord\nattempt 1, status 204", dir=back]; }
+  { rank=same; dk12 -> wk12 [label="11  rename item to\nqueue/delivered", dir=back]; }
+}

@@ -21,6 +21,8 @@ github-reflector sits in between and adds three things:
 
 It is a single Go program with no dependencies outside the standard library. It
 never calls the GitHub API and holds no GitHub credentials.
+[DESIGN.md](DESIGN.md) explains how it works inside, with diagrams of each
+path a delivery can take.
 
 ```
 GitHub ──HTTPS──> Caddy (TLS) ──> reflector ──> queue/waiting ──> Discord webhook

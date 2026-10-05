@@ -1,0 +1,42 @@
+// Bounce diagram: an authentic delivery that policy declines to forward.
+// See bounce-forwarded.gv for how the grid layout works.
+//
+// Render:  dot -Tsvg bounce-declined.gv -o bounce-declined.svg
+digraph declined {
+  graph [bgcolor=white, fontname="Helvetica", nodesep=0.3, ranksep=0.44, splines=line];
+  node  [fontname="Helvetica", fontsize=10, shape=point, width=0, height=0, style=invis];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  // participants
+  { rank=same;
+    node [shape=box, style=filled, fillcolor="#eaeef2", height=0.45];
+    gh [label="GitHub"];
+    cd [label="Caddy\n(TLS)"];
+    hd [label="reflector\nHTTP handler"];
+    dk [label="disk\nlogs/  queue/"];
+    gh -> cd -> hd -> dk [style=invis];
+  }
+
+  // what a participant does by itself
+  { node [shape=box, style=filled, fillcolor="#fff8c5", fontsize=9, margin="0.12,0.09"];
+    hd3 [label="verify HMAC-SHA256\nparse JSON\napply policy:\nnot forwarded, and why"];
+  }
+
+  // lifelines
+  { edge [arrowhead=none, color="gray55", style=dashed, weight=100];
+    gh -> gh1 -> gh2 -> gh3 -> gh4 -> gh5 -> gh6 -> gh_end;
+    cd -> cd1 -> cd2 -> cd3 -> cd4 -> cd5 -> cd6 -> cd_end;
+    hd -> hd1 -> hd2 -> hd3 -> hd4 -> hd5 -> hd6 -> hd_end;
+    dk -> dk1 -> dk2 -> dk3 -> dk4 -> dk5 -> dk6 -> dk_end;
+  }
+
+  { rank=same; gh1 -> cd1 [label="1  POST /webhook\nsigned, over HTTPS"]; }
+  { rank=same; cd2 -> hd2 [label="2  POST /webhook\nplain HTTP"]; }
+  { rank=same; gh3; cd3; hd3; dk3; }
+  { rank=same; hd4 -> dk4 [label="3  write item and reason\nto queue/skipped"]; }
+  { rank=same; hd5 -> dk5 [label="4  log to logs/github\noutcome = ignored, reason"]; }
+  { rank=same;
+    gh6 -> cd6 [label="5  204", dir=back];
+    cd6 -> hd6 [label="5  204", dir=back];
+  }
+}

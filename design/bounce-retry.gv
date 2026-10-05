@@ -1,0 +1,54 @@
+// Bounce diagram: Discord is unavailable, and the queue retries.
+// Caddy is left out; it only passes the request and the answer through.
+// See bounce-forwarded.gv for how the grid layout works.
+//
+// Render:  dot -Tsvg bounce-retry.gv -o bounce-retry.svg
+digraph retry {
+  graph [bgcolor=white, fontname="Helvetica", nodesep=0.3, ranksep=0.44, splines=line];
+  node  [fontname="Helvetica", fontsize=10, shape=point, width=0, height=0, style=invis];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  // participants
+  { rank=same;
+    node [shape=box, style=filled, fillcolor="#eaeef2", height=0.45];
+    gh [label="GitHub"];
+    hd [label="reflector\nHTTP handler"];
+    dk [label="disk\nlogs/  queue/"];
+    wk [label="reflector\nqueue worker"];
+    dc [label="Discord\nwebhook"];
+    gh -> hd -> dk -> wk -> dc [style=invis];
+  }
+
+  // what a participant does by itself
+  { node [shape=box, style=filled, fillcolor="#fff8c5", fontsize=9, margin="0.12,0.09"];
+    wk9 [label="wait for next_attempt\n1m, 2m, 4m ... 30m ceiling"];
+  }
+
+  // lifelines
+  { edge [arrowhead=none, color="gray55", style=dashed, weight=100];
+    gh -> gh1 -> gh2 -> gh3 -> gh4 -> gh5 -> gh6 -> gh7 -> gh8 -> gh9 -> gh10 -> gh11 -> gh12 -> gh13 -> gh_end;
+    hd -> hd1 -> hd2 -> hd3 -> hd4 -> hd5 -> hd6 -> hd7 -> hd8 -> hd9 -> hd10 -> hd11 -> hd12 -> hd13 -> hd_end;
+    dk -> dk1 -> dk2 -> dk3 -> dk4 -> dk5 -> dk6 -> dk7 -> dk8 -> dk9 -> dk10 -> dk11 -> dk12 -> dk13 -> dk_end;
+    wk -> wk1 -> wk2 -> wk3 -> wk4 -> wk5 -> wk6 -> wk7 -> wk8 -> wk9 -> wk10 -> wk11 -> wk12 -> wk13 -> wk_end;
+    dc -> dc1 -> dc2 -> dc3 -> dc4 -> dc5 -> dc6 -> dc7 -> dc8 -> dc9 -> dc10 -> dc11 -> dc12 -> dc13 -> dc_end;
+  }
+
+  // accepted exactly as in the forwarded case
+  { rank=same; gh1 -> hd1 [label="1  POST /webhook\nsigned"]; }
+  { rank=same; hd2 -> dk2 [label="2  write item to\nqueue/waiting"]; }
+  { rank=same; gh3 -> hd3 [label="3  200", dir=back]; }
+
+  // first attempt fails
+  { rank=same; dk4 -> wk4 [label="4  read due items", dir=back]; }
+  { rank=same; wk5 -> dc5 [label="5  POST embed JSON"]; }
+  { rank=same; wk6 -> dc6 [label="6  no answer, or not 2xx", dir=back, style=dashed, color="#cf222e", fontcolor="#cf222e"]; }
+  { rank=same; dk7 -> wk7 [label="7  log to logs/discord\nattempt 1, the error", dir=back]; }
+  { rank=same; dk8 -> wk8 [label="8  rewrite item: attempts,\nlast_error, next_attempt", dir=back]; }
+  { rank=same; gh9; hd9; dk9; wk9; dc9; }
+
+  // a later attempt succeeds
+  { rank=same; wk10 -> dc10 [label="9  POST the same bytes"]; }
+  { rank=same; wk11 -> dc11 [label="10  204", dir=back]; }
+  { rank=same; dk12 -> wk12 [label="11  log to logs/discord\nattempt 2, status 204", dir=back]; }
+  { rank=same; dk13 -> wk13 [label="12  rename item to\nqueue/delivered", dir=back]; }
+}
